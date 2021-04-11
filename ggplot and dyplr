@@ -1,0 +1,181 @@
+---
+title: "Tidyverse Create Assignment"
+author: "Joe Connolly"
+date: "4/9/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Requirements
+
+Clone the provided repository (1 point)
+Write a vignette using one TidyVerse package (15 points)
+Write a vignette using more than one TidyVerse packages (+ 2 points) 
+Make a pull request on the shared repository (1 point)
+Update the README.md file with your example (2 points)
+Submit your GitHub handle name & link to Peergrade (1 point)
+Grade your 3 peers and provide the feedback in Peergrade (2 points)
+Submit the best peer link & your link to Blackboard (1 point
+
+
+## Synopsis
+
+"The Tidyverse" is a collection of packages that work in tandem since they all "share common data representations and API design" $^1$. Using the command "library(tidyverse)", we can see all packages included within the tidyverse.
+
+```{r, warning=FALSE}
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+library(openintro)
+library(maps)
+library(mapproj)
+```
+
+In this assignment, the packages ggplot and dpylr will be exemplified.
+
+## ggplot
+ggplot is utilized for visualizations by declaring the input data for a graphic, then specifying the set of plot aesthetics to enhance the figure. 
+
+```{r, warning=FALSE, load-data}
+
+data('possum', package = "openintro")
+head(possum, 4)
+```
+
+Graphing data:
+
+Plotting a historgram of possums' tail lengths
+```{r}
+ggplot(data = possum, aes(x=tail_l)) + geom_histogram()
+```
+
+### If Picasso was a data scientist...
+
+He would probably plot his data like so: 
+
+This is a data visual by plotting polygons as data points. It's a comparison between the age of possums to the length of their tails. Not particularly easy to read, but nice to look at.
+
+To interpret this cubism graph, each edge is a coordinate of $(age, tail-length)$. Compare with the histogram below:
+
+```{r, warning=FALSE}
+ggplot(data = possum, aes(x=age, y = tail_l)) + geom_polygon(aes(x = age, y = tail_l))
+```
+
+Here is the a scatterplot of the same data as above in the form of a histogram with a line of best fit. 
+```{r, warning=FALSE}
+ggplot(data = possum, aes(x = age, y = tail_l)) + geom_point() + geom_smooth(aes(x = age, y = tail_l), method = "lm", se=FALSE)
+```
+
+
+## Ggplot: Plotting the globe
+
+ggplot also gives us the ability to plot geographical coordinates, which provides us a visual location of variables. To illustrate an example, a dataset from the "maps" library can be utilized to plot various portions of the World (according to Countries and political boundaries). This will be done in 2D, and as it is on a globe.
+
+2-D map of the world
+```{r}
+the_world <- map_data("world") %>% as_tibble()
+head(the_world, 5)
+
+globe <- the_world %>% ggplot() + geom_map(
+  aes(long, lat, map_id = region),
+  map = the_world,
+  color = "darkolivegreen", fill = "darkolivegreen", size = 0.3) 
+
+globe
+```
+
+The globe: Viewing the eastern parts of Africa and Europe, Asia, and Australia. This is made possible by adding the function $coordmap("ortho", orientation = c(x,y,z))$. This gives the appearance as if one were looking at one side of the globe, yet unable to rotate it.
+
+```{r, warning=FALSE}
+the_globe <- the_world %>% ggplot() + geom_map(
+  aes(long, lat, map_id = region),
+  map = the_world,
+  color = "chartreuse4", fill = "chartreuse4", size = 0.1) +
+  coord_map("ortho", orientation = c(10, 95, 0))
+
+the_globe
+```
+
+Map of Italy as it is on the globe
+```{r, warning=FALSE}
+
+tavola_italiana <- map_data("italy") %>% as_tibble()
+
+tavola_italiana %>% 
+  ggplot(aes(long, lat, map_id = region)) +
+  geom_map(
+    map = tavola_italiana,
+    color = "brown3", fill = "brown3", size = 0.3
+  ) + coord_map("ortho", orientation = c(41, 12, 0))
+```
+
+
+## Map of the USA as it is on the Globe
+Excludes AK and HI
+
+```{r, warning=FALSE}
+usa_map <- map_data("state") %>% as_tibble()
+
+usa_map %>% 
+  ggplot(aes(long, lat, map_id = region)) +
+  geom_map(
+    map = usa_map,
+    color = "firebrick2", fill = "deepskyblue", size = 0.3
+  ) + coord_map("ortho", orientation = c(39, -98, 0))
+```
+
+## Using DPLYR to create a choropleth map of the 1940 election outcome.
+
+In this example, voting data regarding the 1940 election between Franklin D. Roosevelt and Wendell Willkie is projected onto the above map of the United States as a choropleth map.
+
+From the built in Maps library, there exists a dataset that contains republican election data up to 1976. This is entitled "votes.repub". $^2$
+
+```{r, warning= FALSE}
+republicans <- maps::votes.repub %>%
+  as.tibble(rownames = "state") %>%
+  select(state, '1940') %>% 
+  rename(repub_prop = '1940') %>%
+  mutate(repub_prop = repub_prop / 100) %>%
+  mutate(state = str_to_lower(state))
+```
+
+```{r}
+republican_voting_table <- usa_map %>% 
+  left_join(republicans, by = c("region"="state"))
+
+head(republican_voting_table,3)
+```
+
+Plotting the voting map via ggplot
+```{r, warning=FALSE}
+republican_voting_table %>% 
+  ggplot(aes(long,lat, group = subregion)) + 
+  geom_map(
+    aes( map_id = region),
+    map = usa_map,
+    color = "gray80", fill = 'gray30', size = 0.3
+    ) +
+    coord_map("ortho", orientation = c(39, -98, 0)) + 
+  geom_polygon(aes(group = group, fill = repub_prop), color = 'gray5') + 
+  scale_fill_gradient2(low = "blue3", mid = "white", high = "darkred", midpoint = 0.5, labels = scales::label_pvalue()) + 
+  labs(
+      title = "1940 Voting Outcome",
+      x = "(D): Blue; (R): Red", y = "", fill = " "
+    ) +
+  theme (
+    plot.title = element_text(size = 28, face = "bold", color = "black"),
+    legend.position = "right")
+  
+      
+```
+
+## Conclusion
+To conclude, ggplot can be used to plot all sorts of information. From graphs globes, this is a very versatile tool to use. With the help of DPLYR, we can also  combine two data sets to have them work in tandem. Utilizing multiple packages within the tidyverse allows one to expand their data functions and come up with  elaborate and interesting projects. 
+
+## Citations and Sources
+$^1$ https://tidyverse.tidyverse.org/#:~:text=The%20tidyverse%20is%20a%20set%20of%20packages%20that,packages%20from%20the%20tidyverse%20in%20a%20single%20command.
+
+$^2$ https://www.youtube.com/watch?v=D5OBWBM5kwk
