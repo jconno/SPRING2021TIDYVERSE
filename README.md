@@ -59,8 +59,8 @@ Link
 
 
 # Joseph C
-Initial Description
-Link
+Utilizing ggplot and dpylr to create maps and visualizations
+https://rpubs.com/jmcon_22/752909
 
 Revision/Addition Description
 Link
